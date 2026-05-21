@@ -1,0 +1,46 @@
+name: Update push heatmap
+
+# Regenerates profile/heatmap.svg from the org's commit activity once an hour,
+# plus on manual trigger. The org profile README embeds that SVG.
+on:
+  schedule:
+    - cron: "0 * * * *"   # top of every hour (UTC); GitHub may delay under load
+  workflow_dispatch:
+
+# Allow the job to commit the regenerated SVG back to this repo.
+permissions:
+  contents: write
+
+concurrency:
+  group: heatmap
+  cancel-in-progress: true
+
+jobs:
+  heatmap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate heatmap SVG
+        env:
+          # PAT with read access to the org's private repos. See README.
+          # Falls back to the job token (current repo only) if unset.
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_ORG: ${{ github.repository_owner }}
+        run: python scripts/generate_heatmap.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add profile/heatmap.svg
+          if git diff --cached --quiet; then
+            echo "No change in heatmap."
+          else
+            git commit -m "chore: update push heatmap"
+            git push
+          fi
