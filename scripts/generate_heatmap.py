@@ -12,8 +12,9 @@ heatmap. Per-day commit counts are the same thing the contribution graph shows
 and are fully available via the commits API with a read token.
 
 Env:
-  GH_TOKEN     token with read access to the org's (private) repos. Without it
-               the script still renders an empty grid so the README isn't broken.
+  GH_TOKEN     token with read access to the org's (private) repos. REQUIRED —
+               without it the script exits non-zero rather than regenerate the
+               heatmap from only the repo it can see.
   GITHUB_ORG   organisation login (default: Acurento-Solutions-GmbH)
   OUTPUT       output path (default: profile/heatmap.svg relative to repo root)
 """
@@ -169,18 +170,21 @@ viewBox="0 0 {width} {height}" role="img" aria-label="Organisation push activity
 # ---------------------------------------------------------------- main
 
 def main() -> None:
-    counts: dict[str, int] = {}
     if not TOKEN:
-        print("WARNING: no GH_TOKEN — rendering an empty heatmap.", file=sys.stderr)
-    else:
-        since = (datetime.now(timezone.utc) - timedelta(days=DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        repos = list_repos()
-        print(f"{ORG}: {len(repos)} repos")
-        for full_name in repos:
-            days = commit_days(full_name, since)
-            for day in days:
-                counts[day] = counts.get(day, 0) + 1
-            print(f"  {full_name}: {len(days)} commits")
+        # Fail loudly rather than overwrite a good heatmap with degraded data:
+        # without an org-read token we'd only see this one repo.
+        sys.exit("ERROR: GH_TOKEN is required (set the ORG_READ_TOKEN secret). "
+                 "Refusing to regenerate the heatmap with only this repo's data.")
+
+    counts: dict[str, int] = {}
+    since = (datetime.now(timezone.utc) - timedelta(days=DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    repos = list_repos()
+    print(f"{ORG}: {len(repos)} repos")
+    for full_name in repos:
+        days = commit_days(full_name, since)
+        for day in days:
+            counts[day] = counts.get(day, 0) + 1
+        print(f"  {full_name}: {len(days)} commits")
 
     svg = render_svg(counts)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

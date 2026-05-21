@@ -32,8 +32,9 @@ the org's other (private) repos the workflow needs a read token:
    (Settings → Secrets and variables → Actions).
 3. Run the workflow once: **Actions → Update push heatmap → Run workflow**.
 
-Without `ORG_READ_TOKEN` the heatmap still renders, but only counts commits in this
-`.github` repo (whatever the job token can see).
+`ORG_READ_TOKEN` is **required**: without it the workflow fails on purpose rather
+than regenerate the heatmap from only this `.github` repo's commits (which would
+wipe out the org-wide counts).
 
 ### Local run
 

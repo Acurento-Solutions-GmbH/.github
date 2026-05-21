@@ -27,9 +27,10 @@ jobs:
 
       - name: Generate heatmap SVG
         env:
-          # PAT with read access to the org's private repos. See README.
-          # Falls back to the job token (current repo only) if unset.
-          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN || secrets.GITHUB_TOKEN }}
+          # PAT with read access to the org's private repos (see README).
+          # REQUIRED: if the secret is unset the script fails the run rather
+          # than overwrite the heatmap with only this repo's data.
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
           GITHUB_ORG: ${{ github.repository_owner }}
         run: python scripts/generate_heatmap.py
 
